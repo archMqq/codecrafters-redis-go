@@ -25,14 +25,15 @@ func main() {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
 	}
-
-	// buff := make([]byte, 1024)
-	// n, err := conn.Read(buff)
-	// if n == 0 {
-	// 	fmt.Println("No command")
-	// }
-
-	//if string(buff) == "+PING\r\n" {
-	conn.Write([]byte("+PONG\r\n"))
-	//}
+	resp := make(chan interface{}, 5)
+	i := 0
+	resp <- ""
+	resp <- ""
+	for res := range resp {
+		i++
+		conn.Write([]byte(res.(string)))
+		if i == 2 {
+			close(resp)
+		}
+	}
 }
