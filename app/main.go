@@ -30,14 +30,13 @@ func main() {
 
 	resp := make(chan interface{}, 2)
 	i := 0
-	resp <- ""
-	resp <- ""
+	go echo.Exec(resp)
 	go echo.Exec(resp)
 	go echo.Exec(resp)
 	for res := range resp {
 		i++
 		conn.Write([]byte(res.(string)))
-		if i == 2 {
+		if i == 3 {
 			close(resp)
 		}
 	}
