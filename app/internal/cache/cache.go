@@ -28,10 +28,10 @@ func NewCache(exp, check time.Duration) *Cache {
 }
 
 func (c *Cache) StartClearing() {
-	go c.clear()
+	go c.clearing()
 }
 
-func (c *Cache) clear() {
+func (c *Cache) clearing() {
 	ticker := time.NewTicker(c.check)
 	select {
 	case <-ticker.C:
@@ -47,6 +47,10 @@ func (c *Cache) clear() {
 		}
 	default:
 	}
+}
+
+func (c *Cache) clear(key string) {
+
 }
 
 func (c *Cache) SetWithoutExp(key string, value string) error {
@@ -76,6 +80,14 @@ func (c *Cache) Get(key string) (string, error) {
 	c.mu.RUnlock()
 	if !ok {
 		return "", errors.New("no such key")
+	}
+	if val.expiration.UnixNano() <= time.Now().UnixNano() {
+		go func(key string, val *cacheItem, c *Cache) {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			delete(c.data, key)
+		}(key, val, c)
+		return "", errors.New("already deleted")
 	}
 
 	return val.val, nil

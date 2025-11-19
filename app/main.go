@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -65,11 +66,34 @@ func main() {
 						conn.Write([]byte("$0\r\n\r\n"))
 						continue
 					}
-					err = cache.SetWithoutExp(cmd[1], cmd[2])
-					if err != nil {
-						conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(err.Error()), err.Error())))
-						continue
+					if len(cmd) == 3 {
+						err = cache.SetWithoutExp(cmd[1], cmd[2])
+						if err != nil {
+							conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(err.Error()), err.Error())))
+							continue
+						}
+					} else {
+						val, err := strconv.Atoi(cmd[4])
+						if err != nil {
+							conn.Write([]byte("-ERR time convert\r\n"))
+							continue
+						}
+
+						var exp time.Duration
+						switch strings.ToUpper(cmd[3]) {
+						case "PX":
+							exp = time.Millisecond * time.Duration(val)
+						case "EX":
+							exp = time.Second * time.Duration(val)
+						}
+
+						err = cache.SetWithExp(cmd[1], cmd[2], exp)
+						if err != nil {
+							conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(err.Error()), err.Error())))
+							continue
+						}
 					}
+
 					conn.Write([]byte("+OK\r\n"))
 				case "GET":
 					if len(cmd) < 2 {
@@ -78,12 +102,12 @@ func main() {
 					}
 					val, err := cache.Get(cmd[1])
 					if err != nil {
-						conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(err.Error()), err.Error())))
+						conn.Write([]byte("$-1\r\n"))
 						continue
 					}
 					res, err := resp.Marshal(val)
 					if err != nil {
-						conn.Write([]byte("$-1\r\n"))
+						conn.Write([]byte("-ERR internal error\r\n"))
 						continue
 					}
 					conn.Write([]byte(res))
