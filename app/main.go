@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/codecrafters-io/redis-starter-go/app/internal/commands/echo"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports in stage 1 (feel free to remove this!)
@@ -25,10 +27,13 @@ func main() {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
 	}
-	resp := make(chan interface{}, 5)
+
+	resp := make(chan interface{}, 2)
 	i := 0
 	resp <- ""
 	resp <- ""
+	go echo.Exec(resp)
+	go echo.Exec(resp)
 	for res := range resp {
 		i++
 		conn.Write([]byte(res.(string)))
