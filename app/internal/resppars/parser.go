@@ -3,7 +3,6 @@ package resppars
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -65,7 +64,6 @@ func ParseCommand(reader *bufio.Reader) ([]string, error) {
 			}
 			res = make([]string, 0, num)
 		case '$':
-			fmt.Println(str, "d")
 			bulkLen, err := strconv.Atoi(str[1:])
 			if err != nil {
 				return nil, err

@@ -7,7 +7,9 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/codecrafters-io/redis-starter-go/app/internal/cache"
 	"github.com/codecrafters-io/redis-starter-go/app/internal/resppars"
 	"github.com/xiam/resp"
 )
@@ -26,6 +28,7 @@ func main() {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
 	}
+	cache := cache.NewCache(time.Second*5, time.Second*5)
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -54,6 +57,33 @@ func main() {
 					res, err := resp.Marshal(cmd[1])
 					if err != nil {
 						conn.Write([]byte("-ERR internal error\r\n"))
+						continue
+					}
+					conn.Write([]byte(res))
+				case "SET":
+					if len(cmd) < 3 {
+						conn.Write([]byte("$0\r\n\r\n"))
+						continue
+					}
+					err = cache.SetWithoutExp(cmd[1], cmd[2])
+					if err != nil {
+						conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(err.Error()), err.Error())))
+						continue
+					}
+					conn.Write([]byte("+OK\r\n"))
+				case "GET":
+					if len(cmd) < 2 {
+						conn.Write([]byte("$0\r\n\r\n"))
+						continue
+					}
+					val, err := cache.Get(cmd[1])
+					if err != nil {
+						conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(err.Error()), err.Error())))
+						continue
+					}
+					res, err := resp.Marshal(val)
+					if err != nil {
+						conn.Write([]byte("$-1\r\n"))
 						continue
 					}
 					conn.Write([]byte(res))
