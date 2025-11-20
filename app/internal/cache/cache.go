@@ -187,10 +187,24 @@ func (c *Cache) GetL(key string) (int, error) {
 	if !ok {
 		return 0, errors.New("not created")
 	}
+	c.mu.RUnlock()
 	switch v := data.val.(type) {
 	case []string:
 		return len(v), nil
 	default:
 		return 0, errors.New("wrong type")
 	}
+}
+
+func (c *Cache) LPop(key string) (string, error) {
+	c.mu.Lock()
+	data, ok := c.data[key]
+	if !ok {
+		return "", errors.New("not created")
+	}
+	res := data.val.([]string)[0]
+	data.val = data.val.([]string)[1:]
+	c.data[key] = data
+	c.mu.Unlock()
+	return res, nil
 }

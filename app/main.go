@@ -155,6 +155,22 @@ func main() {
 						continue
 					}
 					conn.Write([]byte(fmt.Sprintf(":%d\r\n", res)))
+				case "LPOP":
+					if len(cmd) < 2 {
+						conn.Write([]byte("$0\r\n\r\n"))
+						continue
+					}
+					res, err := cache.LPop(cmd[1])
+					if err != nil {
+						conn.Write([]byte("$-1\r\n"))
+						continue
+					}
+					respRes, err := resp.Marshal(res)
+					if err != nil {
+						conn.Write([]byte("-ERR internal error\r\n"))
+						continue
+					}
+					conn.Write(respRes)
 				default:
 					conn.Write([]byte("-ERR unknown command\r\n"))
 				}
