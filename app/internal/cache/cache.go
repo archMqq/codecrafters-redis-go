@@ -121,12 +121,6 @@ func (c *Cache) RGet(key string, startStr, endStr string) ([][]byte, error) {
 	if err != nil {
 		return nil, errors.New("end idx not int")
 	}
-	if start > end {
-		return nil, errors.New("wrong idxes")
-	}
-	if start < 0 || end < 0 {
-		return nil, errors.New("wrong idxes")
-	}
 
 	c.mu.RLock()
 	sl, ok := c.data[key]
@@ -134,12 +128,27 @@ func (c *Cache) RGet(key string, startStr, endStr string) ([][]byte, error) {
 		return nil, errors.New("wrong key")
 	}
 	data := sl.val.([]string)
-	if start >= len(data) {
+	length := len(data)
+	if start >= length {
 		return nil, errors.New("wrong start idx")
 	}
-	resEnd := min(len(data)-1, end)
+	if start < 0 {
+		start = length + start
+		if start < 0 {
+			start = 0
+		}
+	}
+	if end < 0 {
+		end = length + end
+	}
+	if start > end {
+		return nil, errors.New("wrong idxes")
+	}
+	if end >= length {
+		end = length - 1
+	}
 	var res [][]byte
-	for i := start; i <= resEnd; i++ {
+	for i := start; i <= end; i++ {
 		res = append(res, []byte(data[i]))
 	}
 	c.mu.RUnlock()

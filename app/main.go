@@ -126,7 +126,7 @@ func main() {
 					}
 					key, start, end := cmd[1], cmd[2], cmd[3]
 					res, err := cache.RGet(key, start, end)
-					if err != nil || res == nil {
+					if err != nil {
 						conn.Write([]byte("*0\r\n"))
 						continue
 					}
@@ -135,7 +135,6 @@ func main() {
 						conn.Write([]byte("-ERR internal error\r\n"))
 						continue
 					}
-					fmt.Printf("%q", respRes)
 					conn.Write(respRes)
 
 				default:
