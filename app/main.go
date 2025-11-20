@@ -117,7 +117,7 @@ func main() {
 						continue
 					}
 
-					count := cache.RSet(cmd[1], cmd[2])
+					count := cache.RSet(cmd[1], cmd[2:]...)
 					conn.Write([]byte(fmt.Sprintf(":%d\r\n", count)))
 				default:
 					conn.Write([]byte("-ERR unknown command\r\n"))

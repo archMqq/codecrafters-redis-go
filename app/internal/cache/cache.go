@@ -49,10 +49,6 @@ func (c *Cache) clearing() {
 	}
 }
 
-func (c *Cache) clear(key string) {
-
-}
-
 func (c *Cache) SetWithoutExp(key string, value string) error {
 	return c.SetWithExp(key, value, c.defaultExp)
 }
@@ -93,7 +89,7 @@ func (c *Cache) Get(key string) (string, error) {
 	return val.val.(string), nil
 }
 
-func (c *Cache) RSet(key, value string) int {
+func (c *Cache) RSet(key string, values ...string) int {
 	var l int
 	var data []string
 	c.mu.RLock()
@@ -104,7 +100,7 @@ func (c *Cache) RSet(key, value string) int {
 	}
 	c.mu.RUnlock()
 	c.mu.Lock()
-	data = append(data, value)
+	data = append(data, values...)
 	if !ok {
 		c.data[key] = &cacheItem{
 			expiration: time.Now().Add(c.defaultExp),
@@ -112,5 +108,5 @@ func (c *Cache) RSet(key, value string) int {
 	}
 	c.data[key].val = data
 	c.mu.Unlock()
-	return l + 1
+	return l + len(values)
 }
