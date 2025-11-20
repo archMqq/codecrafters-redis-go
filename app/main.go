@@ -60,7 +60,7 @@ func main() {
 						conn.Write([]byte("-ERR internal error\r\n"))
 						continue
 					}
-					conn.Write([]byte(res))
+					conn.Write(res)
 				case "SET":
 					if len(cmd) < 3 {
 						conn.Write([]byte("$0\r\n\r\n"))
@@ -110,7 +110,7 @@ func main() {
 						conn.Write([]byte("-ERR internal error\r\n"))
 						continue
 					}
-					conn.Write([]byte(res))
+					conn.Write(res)
 				case "RPUSH":
 					if len(cmd) < 3 {
 						conn.Write([]byte("$0\r\n\r\n"))
@@ -119,6 +119,25 @@ func main() {
 
 					count := cache.RSet(cmd[1], cmd[2:]...)
 					conn.Write([]byte(fmt.Sprintf(":%d\r\n", count)))
+				case "LRANGE":
+					if len(cmd) < 4 {
+						conn.Write([]byte("$0\r\n\r\n"))
+						continue
+					}
+					key, start, end := cmd[1], cmd[2], cmd[3]
+					res, err := cache.RGet(key, start, end)
+					if err != nil || res == nil {
+						conn.Write([]byte("*0\r\n"))
+						continue
+					}
+					respRes, err := resp.Marshal(res)
+					if err != nil {
+						conn.Write([]byte("-ERR internal error\r\n"))
+						continue
+					}
+					fmt.Printf("%q", respRes)
+					conn.Write(respRes)
+
 				default:
 					conn.Write([]byte("-ERR unknown command\r\n"))
 				}

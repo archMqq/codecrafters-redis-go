@@ -2,6 +2,7 @@ package cache
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -109,4 +110,38 @@ func (c *Cache) RSet(key string, values ...string) int {
 	c.data[key].val = data
 	c.mu.Unlock()
 	return l + len(values)
+}
+
+func (c *Cache) RGet(key string, startStr, endStr string) ([][]byte, error) {
+	start, err := strconv.Atoi(startStr)
+	if err != nil {
+		return nil, errors.New("start idx not int")
+	}
+	end, err := strconv.Atoi(endStr)
+	if err != nil {
+		return nil, errors.New("end idx not int")
+	}
+	if start > end {
+		return nil, errors.New("wrong idxes")
+	}
+	if start < 0 || end < 0 {
+		return nil, errors.New("wrong idxes")
+	}
+
+	c.mu.RLock()
+	sl, ok := c.data[key]
+	if !ok {
+		return nil, errors.New("wrong key")
+	}
+	data := sl.val.([]string)
+	if start >= len(data) {
+		return nil, errors.New("wrong start idx")
+	}
+	resEnd := min(len(data)-1, end)
+	var res [][]byte
+	for i := start; i <= resEnd; i++ {
+		res = append(res, []byte(data[i]))
+	}
+	c.mu.RUnlock()
+	return res, nil
 }
