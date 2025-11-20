@@ -14,7 +14,7 @@ type Cache struct {
 }
 
 type cacheItem struct {
-	val        string
+	val        interface{}
 	expiration time.Time
 }
 
@@ -61,10 +61,10 @@ func (c *Cache) SetWithExp(key string, value string, exp time.Duration) error {
 	expiration := time.Now().Add(exp)
 	c.mu.RLock()
 	_, ok := c.data[key]
+	c.mu.RUnlock()
 	if ok {
 		return errors.New("key already reserved")
 	}
-	c.mu.RUnlock()
 	c.mu.Lock()
 	c.data[key] = &cacheItem{
 		val:        value,
@@ -90,5 +90,27 @@ func (c *Cache) Get(key string) (string, error) {
 		return "", errors.New("already deleted")
 	}
 
-	return val.val, nil
+	return val.val.(string), nil
+}
+
+func (c *Cache) RSet(key, value string) int {
+	var l int
+	var data []string
+	c.mu.RLock()
+	v, ok := c.data[key]
+	if ok {
+		data = v.val.([]string)
+		l = len(data)
+	}
+	c.mu.RUnlock()
+	c.mu.Lock()
+	data = append(data, value)
+	if !ok {
+		c.data[key] = &cacheItem{
+			expiration: time.Now().Add(c.defaultExp),
+		}
+	}
+	c.data[key].val = data
+	c.mu.Unlock()
+	return l + 1
 }
