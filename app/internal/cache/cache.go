@@ -180,3 +180,17 @@ func (c *Cache) RGet(key string, startStr, endStr string) ([][]byte, error) {
 	c.mu.RUnlock()
 	return res, nil
 }
+
+func (c *Cache) GetL(key string) (int, error) {
+	c.mu.RLock()
+	data, ok := c.data[key]
+	if !ok {
+		return 0, errors.New("not created")
+	}
+	switch v := data.val.(type) {
+	case []string:
+		return len(v), nil
+	default:
+		return 0, errors.New("wrong type")
+	}
+}

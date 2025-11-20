@@ -144,6 +144,17 @@ func main() {
 
 					count := cache.LSet(cmd[1], cmd[2:]...)
 					conn.Write([]byte(fmt.Sprintf(":%d\r\n", count)))
+				case "LLEN":
+					if len(cmd) < 2 {
+						conn.Write([]byte("$0\r\n\r\n"))
+						continue
+					}
+					res, err := cache.GetL(cmd[1])
+					if err != nil {
+						conn.Write([]byte(":0\r\n"))
+						continue
+					}
+					conn.Write([]byte(fmt.Sprintf(":%d\r\n", res)))
 				default:
 					conn.Write([]byte("-ERR unknown command\r\n"))
 				}
