@@ -136,7 +136,14 @@ func main() {
 						continue
 					}
 					conn.Write(respRes)
+				case "LPUSH":
+					if len(cmd) < 3 {
+						conn.Write([]byte("$0\r\n\r\n"))
+						continue
+					}
 
+					count := cache.LSet(cmd[1], cmd[2:]...)
+					conn.Write([]byte(fmt.Sprintf(":%d\r\n", count)))
 				default:
 					conn.Write([]byte("-ERR unknown command\r\n"))
 				}

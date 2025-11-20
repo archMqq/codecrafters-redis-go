@@ -112,6 +112,32 @@ func (c *Cache) RSet(key string, values ...string) int {
 	return l + len(values)
 }
 
+func (c *Cache) LSet(key string, values ...string) int {
+	var l int
+	var data []string
+	c.mu.RLock()
+	v, ok := c.data[key]
+	if ok {
+		data = v.val.([]string)
+		l = len(data)
+	}
+	c.mu.RUnlock()
+	reverseVal := make([]string, 0, len(values))
+	for _, v := range values {
+		reverseVal = append([]string{v}, reverseVal...)
+	}
+	c.mu.Lock()
+	data = append(reverseVal, data...)
+	if !ok {
+		c.data[key] = &cacheItem{
+			expiration: time.Now().Add(c.defaultExp),
+		}
+	}
+	c.data[key].val = data
+	c.mu.Unlock()
+	return l + len(values)
+}
+
 func (c *Cache) RGet(key string, startStr, endStr string) ([][]byte, error) {
 	start, err := strconv.Atoi(startStr)
 	if err != nil {
