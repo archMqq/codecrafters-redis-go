@@ -116,8 +116,9 @@ func main() {
 						conn.Write([]byte("$0\r\n\r\n"))
 						continue
 					}
-
+					println("start")
 					count := cache.RSet(cmd[1], cmd[2:]...)
+					println("almost end")
 					conn.Write([]byte(fmt.Sprintf(":%d\r\n", count)))
 				case "LRANGE":
 					if len(cmd) < 4 {
@@ -184,6 +185,24 @@ func main() {
 					default:
 						conn.Write([]byte("$0\r\n\r\n"))
 					}
+				case "BLPOP":
+					if len(cmd) < 3 {
+						conn.Write([]byte("$0\r\n\r\n"))
+						continue
+					}
+					val, err := cache.BLPop(cmd[1], cmd[2])
+					if err != nil {
+						conn.Write([]byte("-ERR internal error\r\n"))
+						continue
+					}
+					res, err := resp.Marshal(val)
+					if err != nil {
+						fmt.Println("2err")
+						conn.Write([]byte("-ERR internal error\r\n"))
+						continue
+					}
+					fmt.Println(res)
+					conn.Write(res)
 				default:
 					conn.Write([]byte("-ERR unknown command\r\n"))
 				}

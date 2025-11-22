@@ -12,6 +12,7 @@ type Cache struct {
 	defaultExp time.Duration
 	check      time.Duration
 	mu         *sync.RWMutex
+	queue      *blpopQueue
 }
 
 type cacheItem struct {
@@ -25,6 +26,10 @@ func NewCache(exp, check time.Duration) *Cache {
 		defaultExp: exp,
 		check:      check,
 		mu:         &sync.RWMutex{},
+		queue: &blpopQueue{
+			q:  make(map[string][]chan struct{}),
+			mu: &sync.RWMutex{},
+		},
 	}
 }
 
@@ -68,6 +73,7 @@ func (c *Cache) SetWithExp(key string, value string, exp time.Duration) error {
 		expiration: expiration,
 	}
 	c.mu.Unlock()
+	c.queue.notify(key)
 	return nil
 }
 
@@ -91,25 +97,24 @@ func (c *Cache) Get(key string) (string, error) {
 }
 
 func (c *Cache) RSet(key string, values ...string) int {
-	var l int
 	var data []string
-	c.mu.RLock()
+	c.mu.Lock()
 	v, ok := c.data[key]
 	if ok {
 		data = v.val.([]string)
-		l = len(data)
 	}
-	c.mu.RUnlock()
-	c.mu.Lock()
 	data = append(data, values...)
 	if !ok {
 		c.data[key] = &cacheItem{
+			val:        data,
 			expiration: time.Now().Add(c.defaultExp),
 		}
+	} else {
+		v.val = data
 	}
-	c.data[key].val = data
 	c.mu.Unlock()
-	return l + len(values)
+	c.queue.notify(key)
+	return len(data)
 }
 
 func (c *Cache) LSet(key string, values ...string) int {
@@ -135,6 +140,7 @@ func (c *Cache) LSet(key string, values ...string) int {
 	}
 	c.data[key].val = data
 	c.mu.Unlock()
+	c.queue.notify(key)
 	return l + len(values)
 }
 
@@ -231,5 +237,41 @@ func (c *Cache) LPopMultiple(key string, count string) ([][]byte, error) {
 	for _, v := range val {
 		res = append(res, []byte(v))
 	}
+	return res, nil
+}
+
+func (c *Cache) BLPop(key, sec string) ([][]byte, error) {
+	seconds, err := strconv.Atoi(sec)
+	if err != nil {
+		return nil, err
+	}
+	res := make([][]byte, 2)
+	res[0] = []byte(key)
+	c.mu.Lock()
+	if _, ok := c.data[key]; ok {
+		v, err := c.leftPop(key, 1)
+		if err != nil {
+			return nil, err
+		}
+
+		res[1] = []byte(v[0])
+	}
+	c.mu.Unlock()
+	outCh := make(chan struct{})
+	if seconds == 0 {
+		c.queue.set(key, outCh)
+	} else {
+		c.queue.setWithTime(key, outCh, time.Second*time.Duration(seconds))
+	}
+
+	if _, ok := <-outCh; !ok {
+		return nil, errors.New("time expired")
+	}
+
+	close(outCh)
+	c.mu.Lock()
+	res[1] = []byte(c.data[key].val.([]string)[0])
+	c.mu.Unlock()
+
 	return res, nil
 }
