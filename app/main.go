@@ -156,21 +156,34 @@ func main() {
 					}
 					conn.Write([]byte(fmt.Sprintf(":%d\r\n", res)))
 				case "LPOP":
-					if len(cmd) < 2 {
+					switch len(cmd) {
+					case 2:
+						res, err := cache.LPop(cmd[1])
+						if err != nil {
+							conn.Write([]byte("$-1\r\n"))
+							continue
+						}
+						respRes, err := resp.Marshal(res)
+						if err != nil {
+							conn.Write([]byte("-ERR internal error\r\n"))
+							continue
+						}
+						conn.Write(respRes)
+					case 3:
+						res, err := cache.LPopMultiple(cmd[1], cmd[2])
+						if err != nil {
+							conn.Write([]byte("$-1\r\n"))
+							continue
+						}
+						respRes, err := resp.Marshal(res)
+						if err != nil {
+							conn.Write([]byte("-ERR internal error\r\n"))
+							continue
+						}
+						conn.Write(respRes)
+					default:
 						conn.Write([]byte("$0\r\n\r\n"))
-						continue
 					}
-					res, err := cache.LPop(cmd[1])
-					if err != nil {
-						conn.Write([]byte("$-1\r\n"))
-						continue
-					}
-					respRes, err := resp.Marshal(res)
-					if err != nil {
-						conn.Write([]byte("-ERR internal error\r\n"))
-						continue
-					}
-					conn.Write(respRes)
 				default:
 					conn.Write([]byte("-ERR unknown command\r\n"))
 				}

@@ -196,15 +196,40 @@ func (c *Cache) GetL(key string) (int, error) {
 	}
 }
 
-func (c *Cache) LPop(key string) (string, error) {
+func (c *Cache) leftPop(key string, count int) ([]string, error) {
 	c.mu.Lock()
 	data, ok := c.data[key]
 	if !ok {
-		return "", errors.New("not created")
+		return nil, errors.New("not created")
 	}
-	res := data.val.([]string)[0]
-	data.val = data.val.([]string)[1:]
+	res := data.val.([]string)[0:count]
+	data.val = data.val.([]string)[count:]
 	c.data[key] = data
 	c.mu.Unlock()
+	return res, nil
+}
+
+func (c *Cache) LPop(key string) (string, error) {
+	res, err := c.leftPop(key, 1)
+	if err != nil {
+		return "", err
+	}
+
+	return res[0], nil
+}
+
+func (c *Cache) LPopMultiple(key string, count string) ([][]byte, error) {
+	n, err := strconv.Atoi(count)
+	if err != nil {
+		return nil, err
+	}
+	val, err := c.leftPop(key, n)
+	if err != nil {
+		return nil, err
+	}
+	res := make([][]byte, 0, len(val))
+	for _, v := range val {
+		res = append(res, []byte(v))
+	}
 	return res, nil
 }
