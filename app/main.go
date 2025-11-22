@@ -192,7 +192,7 @@ func main() {
 					}
 					val, err := cache.BLPop(cmd[1], cmd[2])
 					if err != nil {
-						conn.Write([]byte("-ERR internal error\r\n"))
+						conn.Write([]byte("*-1\r\n"))
 						continue
 					}
 					res, err := resp.Marshal(val)

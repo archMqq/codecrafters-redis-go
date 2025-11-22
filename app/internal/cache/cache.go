@@ -241,7 +241,7 @@ func (c *Cache) LPopMultiple(key string, count string) ([][]byte, error) {
 }
 
 func (c *Cache) BLPop(key, sec string) ([][]byte, error) {
-	seconds, err := strconv.Atoi(sec)
+	seconds, err := strconv.ParseFloat(sec, 32)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +261,7 @@ func (c *Cache) BLPop(key, sec string) ([][]byte, error) {
 	if seconds == 0 {
 		c.queue.set(key, outCh)
 	} else {
-		c.queue.setWithTime(key, outCh, time.Second*time.Duration(seconds))
+		c.queue.setWithTime(key, outCh, time.Duration(seconds*float64(time.Second)))
 	}
 
 	if _, ok := <-outCh; !ok {
